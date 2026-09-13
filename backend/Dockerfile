@@ -6,3 +6,4 @@ COPY app ./app
 COPY run.py .
 EXPOSE 5000
 CMD ["python", "run.py"]
+
