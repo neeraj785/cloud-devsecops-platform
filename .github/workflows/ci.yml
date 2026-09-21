@@ -116,13 +116,47 @@ jobs:
       # --------------------------------------------------------
       # Configure AWS using OIDC
       # --------------------------------------------------------
-      - name: Show GitHub context
+      - name: Debug OIDC claims
         run: |
-          echo "Repository: $GITHUB_REPOSITORY"
-          echo "Ref: $GITHUB_REF"
-          echo "Ref name: $GITHUB_REF_NAME"
-          echo "Event: $GITHUB_EVENT_NAME"
-          echo "Workflow: $GITHUB_WORKFLOW"
+          TOKEN=$(curl -sSf \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
+            | jq -r '.value')
+
+          export OIDC_TOKEN="$TOKEN"
+
+          python - <<'PY'
+          import os
+          import json
+          import base64
+
+          token = os.environ["OIDC_TOKEN"]
+          payload = token.split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+
+          claims = json.loads(
+              base64.urlsafe_b64decode(payload)
+          )
+
+          print("----- OIDC CLAIMS -----")
+          print("sub:", claims.get("sub"))
+          print("aud:", claims.get("aud"))
+          print("repository:", claims.get("repository"))
+          print("ref:", claims.get("ref"))
+          print("repository_owner:", claims.get("repository_owner"))
+          print("job_workflow_ref:", claims.get("job_workflow_ref"))
+          print("environment:", claims.get("environment"))
+          print("-----------------------")
+          PY
+
+          unset TOKEN
+          unset OIDC_TOKEN
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::588957334666:role/cloud-devsecops-platform-github-actions
+          aws-region: ap-south-2
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
