@@ -3,7 +3,7 @@ terraform {
 
     required_providers {
       aws = {
-        source = "hasicrop/aws"
+        source = "hashicrop/aws"
         version = "~> 6.0"
       }
     }
