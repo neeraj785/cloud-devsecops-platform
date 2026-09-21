@@ -1,42 +1,28 @@
+---
 name: CloudShop CI
-
 on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
-
-
 jobs:
-
   backend-test:
-
     name: Backend Test
-
     runs-on: ubuntu-latest
-
     steps:
-
       - name: Checkout source code
         uses: actions/checkout@v4
-
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-
       - name: Install dependencies
         run: |
           cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-
       - name: Test backend health endpoint
         run: |
           cd backend
@@ -46,82 +32,51 @@ jobs:
           sleep 5
 
           curl --fail http://localhost:5000/api/health
-
-
   frontend-build:
-
     name: Frontend Build
-
     runs-on: ubuntu-latest
-
     steps:
-
       - name: Checkout source code
         uses: actions/checkout@v4
-
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
-
       - name: Install dependencies
         run: |
           cd frontend
           npm ci
-
-
       - name: Build frontend
         run: |
           cd frontend
           npm run build
-
-
   docker-build:
-
     name: Docker Build
-
     runs-on: ubuntu-latest
-
     needs:
       - backend-test
       - frontend-build
-
     steps:
-
       - name: Checkout source code
         uses: actions/checkout@v4
-
-
       - name: Build backend image
         run: |
           docker build \
             -t cloudshop-backend:${{ github.sha }} \
             ./backend
-
-
       - name: Build frontend image
         run: |
           docker build \
             -t cloudshop-frontend:${{ github.sha }} \
             ./frontend
-
-
   compose-validation:
-
     name: Docker Compose Validation
-
     runs-on: ubuntu-latest
-
     steps:
-
       - name: Checkout source code
         uses: actions/checkout@v4
-
-
       - name: Create CI environment file
         run: |
           cat > .env <<EOF
@@ -134,49 +89,26 @@ jobs:
           DB_USER=shopuser
           DB_PASSWORD=shoppassword
           EOF
-
-
       - name: Validate Docker Compose
         run: |
           docker compose config
-          
-
- # ============================================================
-  # PUSH IMAGES TO ECR
-  # ============================================================
   ecr-push:
-
     name: Push Images to Amazon ECR
-
     runs-on: ubuntu-latest
-
     needs:
       - backend-test
       - frontend-build
       - docker-build
       - compose-validation
-
-    # Only push images when code is actually pushed to main.
-    # Pull requests should run CI but should not push images.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
     permissions:
       id-token: write
       contents: read
-
     env:
       AWS_REGION: ap-south-2
-
       BACKEND_REPOSITORY: cloud-devsecops-platform-backend
-
       FRONTEND_REPOSITORY: cloud-devsecops-platform-frontend
-
     steps:
-
-      # --------------------------------------------------------
-      # Checkout
-      # --------------------------------------------------------
-
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -191,93 +123,52 @@ jobs:
           echo "Ref name: $GITHUB_REF_NAME"
           echo "Event: $GITHUB_EVENT_NAME"
           echo "Workflow: $GITHUB_WORKFLOW"
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::588957334666:role/cloud-devsecops-platform-github-actions
           aws-region: ${{ env.AWS_REGION }}
-
-
-      # --------------------------------------------------------
-      # Login to ECR
-      # --------------------------------------------------------
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-
-      # --------------------------------------------------------
-      # Build backend image
-      # --------------------------------------------------------
-
       - name: Build backend image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-
         run: |
           docker build \
             -t $REGISTRY/$BACKEND_REPOSITORY:$IMAGE_TAG \
             ./backend
-
-
-      # --------------------------------------------------------
-      # Build frontend image
-      # --------------------------------------------------------
-
       - name: Build frontend image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-
         run: |
           docker build \
             -t $REGISTRY/$FRONTEND_REPOSITORY:$IMAGE_TAG \
             ./frontend
-
-
-      # --------------------------------------------------------
-      # Push backend image
-      # --------------------------------------------------------
-
       - name: Push backend image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-
         run: |
           docker push \
             $REGISTRY/$BACKEND_REPOSITORY:$IMAGE_TAG
-
-
-      # --------------------------------------------------------
-      # Push frontend image
-      # --------------------------------------------------------
-
       - name: Push frontend image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-
         run: |
           docker push \
             $REGISTRY/$FRONTEND_REPOSITORY:$IMAGE_TAG
-
-
-      # --------------------------------------------------------
-      # Display image information
-      # --------------------------------------------------------
-
       - name: Display pushed images
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-
         run: |
           echo "Backend image:"
           echo "$REGISTRY/$BACKEND_REPOSITORY:$IMAGE_TAG"
 
           echo "Frontend image:"
           echo "$REGISTRY/$FRONTEND_REPOSITORY:$IMAGE_TAG"
+
