@@ -139,3 +139,138 @@ jobs:
       - name: Validate Docker Compose
         run: |
           docker compose config
+          
+
+ # ============================================================
+  # PUSH IMAGES TO ECR
+  # ============================================================
+ ecr-push:
+
+    name: Push Images to Amazon ECR
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - backend-test
+      - frontend-build
+      - docker-build
+      - compose-validation
+
+    # Only push images when code is actually pushed to main.
+    # Pull requests should run CI but should not push images.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AWS_REGION: ap-south-2
+
+      BACKEND_REPOSITORY: cloud-devsecops-platform-backend
+
+      FRONTEND_REPOSITORY: cloud-devsecops-platform-frontend
+
+    steps:
+
+      # --------------------------------------------------------
+      # Checkout
+      # --------------------------------------------------------
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+
+      # --------------------------------------------------------
+      # Configure AWS using OIDC
+      # --------------------------------------------------------
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::588957334666:role/cloud-devsecops-platform-github-actions
+          aws-region: ${{ env.AWS_REGION }}
+
+
+      # --------------------------------------------------------
+      # Login to ECR
+      # --------------------------------------------------------
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+
+      # --------------------------------------------------------
+      # Build backend image
+      # --------------------------------------------------------
+
+      - name: Build backend image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+
+        run: |
+          docker build \
+            -t $REGISTRY/$BACKEND_REPOSITORY:$IMAGE_TAG \
+            ./backend
+
+
+      # --------------------------------------------------------
+      # Build frontend image
+      # --------------------------------------------------------
+
+      - name: Build frontend image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+
+        run: |
+          docker build \
+            -t $REGISTRY/$FRONTEND_REPOSITORY:$IMAGE_TAG \
+            ./frontend
+
+
+      # --------------------------------------------------------
+      # Push backend image
+      # --------------------------------------------------------
+
+      - name: Push backend image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+
+        run: |
+          docker push \
+            $REGISTRY/$BACKEND_REPOSITORY:$IMAGE_TAG
+
+
+      # --------------------------------------------------------
+      # Push frontend image
+      # --------------------------------------------------------
+
+      - name: Push frontend image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+
+        run: |
+          docker push \
+            $REGISTRY/$FRONTEND_REPOSITORY:$IMAGE_TAG
+
+
+      # --------------------------------------------------------
+      # Display image information
+      # --------------------------------------------------------
+
+      - name: Display pushed images
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+
+        run: |
+          echo "Backend image:"
+          echo "$REGISTRY/$BACKEND_REPOSITORY:$IMAGE_TAG"
+
+          echo "Frontend image:"
+          echo "$REGISTRY/$FRONTEND_REPOSITORY:$IMAGE_TAG"
