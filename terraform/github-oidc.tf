@@ -11,7 +11,7 @@ resource "aws_iam_openid_connect_provider" "github" {
   ]
 
   tags = {
-    Project  = var.project_name
+    Project   = var.project_name
     ManagedBy = "Terraform"
   }
 }
@@ -48,7 +48,7 @@ resource "aws_iam_role" "github_actions" {
   })
 
   tags = {
-    Project  = var.project_name
+    Project   = var.project_name
     ManagedBy = "Terraform"
   }
 }
@@ -63,7 +63,6 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
     Version = "2012-10-17"
 
     Statement = [
-
       {
         Effect = "Allow"
 
@@ -90,12 +89,12 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
           aws_ecr_repository.frontend.arn
         ]
       }
-
     ]
   })
 }
 
 
+# GitHub Actions IAM role ARN
 output "github_actions_role_arn" {
   description = "IAM role ARN used by GitHub Actions"
   value       = aws_iam_role.github_actions.arn
