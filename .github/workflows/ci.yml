@@ -151,8 +151,8 @@ jobs:
 
     env:
       AWS_REGION: ap-south-2
-      BACKEND_REPOSITORY: cloud-devsecops-platform-backend
-      FRONTEND_REPOSITORY: cloud-devsecops-platform-frontend
+      BACKEND_REPOSITORY: devshop-backend
+      FRONTEND_REPOSITORY: devshop-frontend
 
     steps:
 
