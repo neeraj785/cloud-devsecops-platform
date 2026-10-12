@@ -21,7 +21,7 @@ resource "aws_ecr_repository" "frontend" {
 # Keep only the 5 most recent images to minimize storage cost
 resource "aws_ecr_lifecycle_policy" "backend_policy" {
   repository = aws_ecr_repository.backend.name
-  policy     = jsonencode({
+  policy = jsonencode({
     rules = [{
       rulePriority = 1
       description  = "Keep last 5 images"
@@ -38,7 +38,7 @@ resource "aws_ecr_lifecycle_policy" "backend_policy" {
 
 resource "aws_ecr_lifecycle_policy" "frontend_policy" {
   repository = aws_ecr_repository.frontend.name
-  policy     = jsonencode({
+  policy = jsonencode({
     rules = [{
       rulePriority = 1
       description  = "Keep last 5 images"

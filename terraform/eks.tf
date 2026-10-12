@@ -11,7 +11,7 @@ module "eks" {
   create_kms_key              = false
   cluster_encryption_config   = {}
 
-  vpc_id     = module.vpc.vpc_id
+  vpc_id = module.vpc.vpc_id
   # Put the cluster and nodes in public subnets:
   subnet_ids = module.vpc.public_subnets
 
