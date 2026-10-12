@@ -22,6 +22,7 @@ module "eks" {
       # Subnet where the worker EC2 instances will run
       subnet_ids = module.vpc.public_subnets
 
+      ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["t3.medium"]
       capacity_type  = "SPOT"
 
